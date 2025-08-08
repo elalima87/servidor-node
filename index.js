@@ -1,30 +1,30 @@
+require('dotenv').config()
 const express = require('express')
+const Note = require('./models/note')
 const app = express()//importando o express
-const cors = require('cors')
+const cors = require('cors')//importando o cors
+
+// Middleware para registrar as requisições
+// O middleware é uma função que tem acesso ao objeto de requisição (request), ao objeto de resposta (response) e à próxima função de middleware na pilha (next).
+// Ele pode executar qualquer código, fazer alterações nos objetos de requisição e resposta, encerrar a requisição ou chamar a próxima função de middleware.  
+
+const requestLogger = (request, response, next) => {
+  console.log('Method:', request.method)
+  console.log('Path:  ', request.path)
+  console.log('Body:  ', request.body)
+  console.log('---')
+  next()
+}
+
+
+
 
 app.use(cors())
-
 app.use(express.static('build'))
+app.use(express.json())
+app.use(requestLogger)
 
-//app.use(express.json())
 
-let notes = [
-  {
-    id: 1,
-    content: "HTML is easy",
-    important: true
-  },
-  {
-    id: 2,
-    content: "Browser can execute only JavaScript",
-    important: false
-  },
-  {
-    id: 3,
-    content: "GET and POST are the most important methods of HTTP protocol",
-    important: true
-  }
-]
 
 app.get('/', (request, response) => {
 	//A função de gerência de evento aceita dois parâmetros. O primeiro parâmetro request (requisição) contém todas as informações da requisição HTTP, e o segundo parâmetro response (resposta) é usado para definir como a requisição é respondida.
@@ -34,34 +34,50 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/notes', (request, response) => {
-  response.json(notes)
-  //A requisição é respondida com o método json do objeto response
+  Note.find({}).then(notes => {
+    console.log(notes)
+    response.json(notes)
+    //A requisição é respondida com o método json do objeto response
+  })
 })
 
-app.get('/api/notes/:id', (request, response) => {
-  const id = Number(request.params.id)
-  console.log(id)
-  const note = notes.find(note => note.id === id) 
-  
-    if (note) {
-    response.json(note)
-  } else {
-    response.status(404).end()
-  }
-  
-  // const note = notes.find(note => {
-    // console.log(note.id, typeof note.id, id, typeof id, note.id === id)
-    // return note.id === id
-  // }) Para identificar o erro é bom retirar de arrow function
-  console.log(note)
-  response.json(note)
+
+
+app.get('/api/notes/:id', (request, response, next) => {
+  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+
+    .catch(error => next(error))
 })
 
-app.delete('/api/notes/:id', (request, response) => {
-  const id = Number(request.params.id)
-  notes = notes.filter(note => note.id !== id)
+app.delete('/api/notes/:id', (request, response, next) => {
+  Note.findByIdAndDelete(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
 
-  response.status(204).end()
+app.put('/api/notes/:id', (request, response, next) => {
+
+  const { content, important } = request.body
+
+  Note.findByIdAndUpdate(
+    request.params.id, 
+
+    { content, important },
+    { new: true, runValidators: true, context: 'query' }
+  ) 
+    .then(updatedNote => {
+      response.json(updatedNote)
+    })
+    .catch(error => next(error))
 })
 
 const generateId = () => {
@@ -71,32 +87,45 @@ const generateId = () => {
   return maxId + 1
 }
 
-app.post('/api/notes', (request, response) => {
+app.post('/api/notes', (request, response, next) => {
   const body = request.body
 
-  if (!body.content) {
-    return response.status(400).json({ 
-      error: 'content missing' 
-    })
-  }
-
-  const note = {
+  const note = new Note({
     content: body.content,
     important: body.important || false,
-    id: generateId(),
+    date: new Date(),
+  })
+
+  note.save()
+    .then(savedNote => {
+      response.json(savedNote.toJSON())
+    })
+    .catch(error => next(error))
+})
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError' && error.kind == 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }  else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   }
 
-  notes = notes.concat(note)
+  next(error)
+}
 
-  response.json(note)
-})
+app.use(errorHandler)
 
-// const PORT = 3001
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`)
-// })
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  console.log(`Server running on port (Servidor em execução na porta) ${PORT}`)
 })
+

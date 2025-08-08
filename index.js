@@ -125,8 +125,8 @@ app.use(errorHandler)
 
 
 const PORT = process.env.PORT 
-const HOST = process.env.HOST 
-app.listen(PORT,HOST, () => {
-  console.log(`Server running on port (Servidor em execução na porta) ${HOST}:${PORT}`)
-})
+const HOST = '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
+});
 

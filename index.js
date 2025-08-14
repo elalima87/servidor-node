@@ -1,8 +1,12 @@
 require('dotenv').config()
 const express = require('express')
 const Note = require('./models/note')
-const app = express()//importando o express
+const app = express()
 const cors = require('cors')//importando o cors
+
+// const app = require('./app') 
+const config = require('./utils/config')
+const logger = require('./utils/logger')
 
 // Middleware para registrar as requisições
 // O middleware é uma função que tem acesso ao objeto de requisição (request), ao objeto de resposta (response) e à próxima função de middleware na pilha (next).
@@ -27,7 +31,7 @@ app.use(requestLogger)
 
 
 app.get('/', (request, response) => {
-	//A função de gerência de evento aceita dois parâmetros. O primeiro parâmetro request (requisição) contém todas as informações da requisição HTTP, e o segundo parâmetro response (resposta) é usado para definir como a requisição é respondida.
+  //A função de gerência de evento aceita dois parâmetros. O primeiro parâmetro request (requisição) contém todas as informações da requisição HTTP, e o segundo parâmetro response (resposta) é usado para definir como a requisição é respondida.
   response.send('<h1>Hello World!</h1>')
   // a requisição é respondida usando o método send (enviar) do objeto response contendo a string <h1>Hello World!</h1>
   
@@ -127,6 +131,7 @@ app.use(errorHandler)
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
+  logger.info(`Server running on http://${HOST}:${PORT}`);
+  
 });
 
